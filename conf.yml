@@ -1,0 +1,3 @@
+DATABASE:
+    DB_PATH: ':memory:' #/home/ouarab/Desktop/projet/server/data/test.db
+    DB_DEFS_PATH: /home/ouarab/Desktop/netapp_sim_venv/netapp_sim/data/definitions.sql
