@@ -1,7 +1,10 @@
 from threading import Lock
+from random import uniform
+from time import sleep
 
 from scapy.all import (FieldLenField, Scapy_Exception, Packet, ByteField,
-                       StrLenField, IntField, AnsweringMachine, sendp, Ether)
+                       StrLenField, IntField, StrField, AnsweringMachine,
+                       sendp, Ether)
 
 from monitor import Monitor
 from model import CoS
@@ -26,47 +29,29 @@ RREQ = 3    # resource reservation request
 RRES = 4    # resource reservation response
 DREQ = 5    # data exchange request
 DRES = 6    # data exchange response
-
-
-class VariableFieldLenField(FieldLenField):
-    def addfield(self, pkt, s, val):
-        val = self.i2m(pkt, val)
-        data = []
-        while val:
-            if val > 127:
-                data.append(val & 127)
-                val /= 127
-            else:
-                data.append(val)
-                lastoffset = len(data) - 1
-                data = "".join(chr(val | (0 if i == lastoffset else 128))
-                               for i, val in enumerate(data))
-                return s + data
-            if len(data) > 3:
-                raise Scapy_Exception("%s: malformed length field" %
-                                      self.__class__.__name__)
-
-    def getfield(self, pkt, s):
-        value = 0
-        for offset, curbyte in enumerate(s):
-            curbyte = ord(curbyte)
-            value += (curbyte & 127) * (128 ** offset)
-            if curbyte & 128 == 0:
-                return s[offset + 1:], value
-            if offset > 2:
-                raise Scapy_Exception("%s: malformed length field" %
-                                      self.__class__.__name__)
+DACK = 7    # data exchange acknowledgement
 
 
 class MyProtocol(Packet):
     name = 'MyProtocol'
     fields_desc = [
         ByteField('state', HREQ),
-        StrLenField('req_id', '', _req_id_len),
+        StrLenField('req_id', b'', _req_id_len),
         IntField('cos_id', 0),
-        #VariableFieldLenField('len', 0, length_of='data'),
-        #StrLenField('data', '', length_from=lambda pkt: pkt.len),
+        StrField('data', b'')
     ]
+
+    def hashret(self):
+        return self.req_id
+
+    def answers(self, other):
+        if other.state == HREQ and self.state == HRES:
+            return 1
+        if other.state == RREQ and self.state == RRES:
+            return 1
+        if other.state == DREQ and self.state == DRES:
+            return 1
+        return 0
 
 
 class MyProtocolAM(AnsweringMachine):
@@ -74,7 +59,7 @@ class MyProtocolAM(AnsweringMachine):
     sniff_options = {'filter': 'inbound'}
     send_function = staticmethod(sendp)
 
-    def parse_options(self, _requests={'_': None}):
+    def parse_options(self, _requests: dict = {'_': None}):
         self._requests = _requests
 
     def is_request(self, req: Packet):
@@ -97,8 +82,26 @@ class MyProtocolAM(AnsweringMachine):
                     my_proto.state = RREQ
                     return Ether(dst=req[Ether].src) / my_proto
         elif state == RREQ:
+            reserve_resources(req[MyProtocol].cos_id)
             my_proto.state = RRES
             return Ether(dst=req[Ether].src) / my_proto
+        elif state == RRES:
+            my_proto.state = DREQ
+            my_proto.data = b'data + program'
+            return Ether(dst=req[Ether].src) / my_proto
+        elif state == DREQ:
+            execute(my_proto.data)
+            my_proto.state = DRES
+            my_proto.data = b'response'
+            return Ether(dst=req[Ether].src) / my_proto
+        elif state == DRES:
+            self._requests.pop(req[MyProtocol].req_id)
+            my_proto.data = b''
+            my_proto.state = DACK
+            return Ether(dst=req[Ether].src) / my_proto
+        elif state == DACK:
+            free_resources(req[MyProtocol].cos_id)
+            return
 
 
 def check_resources(cos_id: int):
@@ -122,6 +125,11 @@ def reserve_resources(cos_id: int):
     except:
         return False
         # TODO manage exception
+
+
+def execute(data):
+    sleep(uniform(0, 1))
+    return
 
 
 def free_resources(cos_id: int):
