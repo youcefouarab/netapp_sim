@@ -18,10 +18,10 @@ create table if not exists cos (
 );
 
 insert into cos (id, name,               min_cpu, min_ram, min_disk)
-         values (1,  'best-effort',      1,       1,       1),
-                (2,  'cpu-bound',        1,       1,       1),
-                (3,  'streaming',        1,       1,       1),
-                (4,  'conversational',   1,       1,       1),
-                (5,  'interactive',      1,       1,       1),
-                (6,  'real-time',        1,       1,       1),
-                (7,  'mission-critical', 1,       1,       1);
+         values (1,  'best-effort',      1,       1000,    1),
+                (2,  'cpu-bound',        1,       1000,    1),
+                (3,  'streaming',        1,       1000,    1),
+                (4,  'conversational',   1,       1000,    1),
+                (5,  'interactive',      1,       1000,    1),
+                (6,  'real-time',        1,       1000,    1),
+                (7,  'mission-critical', 1,       1000,    1);

@@ -1,10 +1,2 @@
-# request states
-WAITING = 'WAITING'
-STARTING = 'STARTING'
-PENDING = 'PENDING'
-FINISHED = 'FINISHED'
-
 # misc. consts
-BROADCAST_MAC = 'ff:ff:ff:ff:ff:ff'
-BROADCAST_IP = '255.255.255.255'
 REQ_ID_LEN = 10
