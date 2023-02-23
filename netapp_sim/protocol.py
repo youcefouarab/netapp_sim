@@ -2,9 +2,8 @@ from threading import Lock
 from random import uniform
 from time import sleep
 
-from scapy.all import (FieldLenField, Scapy_Exception, Packet, ByteField,
-                       StrLenField, IntField, StrField, AnsweringMachine,
-                       sendp, Ether)
+from scapy.all import (Packet, ByteField, StrLenField, IntField, StrField, 
+                       AnsweringMachine, sendp, Ether)
 
 from monitor import Monitor
 from model import CoS
