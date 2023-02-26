@@ -1,8 +1,9 @@
 from threading import Lock
 from time import time
 
-from scapy.all import (Packet, ByteField, StrLenField, IntField, StrField,
-                       AnsweringMachine, sendp, Ether)
+from scapy.all import (Packet, ByteField, StrLenField, IntField, 
+                       ConditionalField, StrField, AnsweringMachine, sendp, 
+                       Ether)
 
 from simulator import (check_resources, reserve_resources, free_resources,
                        execute)
@@ -32,7 +33,8 @@ class MyProtocol(Packet):
         ByteField('state', HREQ),
         StrLenField('req_id', b'', _req_id_len),
         IntField('cos_id', 0),
-        StrField('data', b'')
+        ConditionalField(StrField('data', b''), 
+                         lambda pkt: pkt.state == DREQ or pkt.state == DRES)
     ]
 
     def show(self, dump: bool = False, indent: int = 3, lvl: str = "",
@@ -124,7 +126,6 @@ class MyProtocolAM(AnsweringMachine):
             self._requests[req_id].state = DRES
             self._requests[req_id].dres_at = time()
             print(self._requests[req_id])
-            my_proto.data = b''
             my_proto.state = DACK
             return Ether(dst=eth_src) / my_proto
         elif state == DACK:
