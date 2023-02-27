@@ -9,14 +9,20 @@
 '''
 
 from os import getenv
+from os.path import dirname, abspath 
 from sqlite3 import connect
 
 from model import Model, CoS
 import config
 
 # database configuration settings
-DB_PATH = getenv('DB_PATH', '')
-DB_DEFS_PATH = getenv('DB_DEFS_PATH', '')
+PATH = dirname(dirname(abspath(__file__)))
+_db_path = getenv('DB_PATH', '')
+if _db_path != ':memory:':
+    DB_PATH = PATH + '/' + _db_path
+else:
+    DB_PATH = _db_path
+DB_DEFS_PATH = PATH + '/' + getenv('DB_DEFS_PATH', '')
 
 # table names and definitions
 COS = 'cos'
