@@ -1,4 +1,4 @@
-from threading import Lock
+from threading import Lock, Thread
 from time import time
 
 from scapy.all import (Packet, ByteField, StrLenField, IntField, 
@@ -113,7 +113,9 @@ class MyProtocolAM(AnsweringMachine):
         elif state == DREQ:
             print('Recv data exchange request from', eth_src)
             my_proto.show()
-            execute(my_proto.data)
+            exec = Thread(target=execute, args=(my_proto.data,))
+            exec.start()
+            exec.join()
             print('Send data exchange response to', eth_src, '\n')
             my_proto.state = DRES
             my_proto.data = b'response'

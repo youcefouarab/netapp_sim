@@ -69,6 +69,7 @@ if __name__ == '__main__':
     bind_layers(Ether, MyProtocol)
     Monitor().start()
     Thread(target=MyProtocolAM(_requests=_requests, verbose=0)).start()
+    print('\nClick ENTER to send a request\nOr wait to receive requests\n')
     while True:
         input()
         request_host(cos_id=2)
