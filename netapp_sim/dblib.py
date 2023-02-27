@@ -9,7 +9,7 @@
 '''
 
 from os import getenv
-from os.path import dirname, abspath 
+from os.path import dirname, abspath
 from sqlite3 import connect
 
 from model import Model, CoS

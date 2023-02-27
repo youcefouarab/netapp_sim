@@ -48,8 +48,8 @@ class Request:
     def __repr__(self):
         return ('\nrequest(req_id=%s, state=%s, cos_id=%d, host=%s, '
                 'hreq_at=%s, hres_at=%s, rres_at=%s, dres_at=%s)\n' % (
-                    self.req_id.decode(), _states[self.state], self.cos_id, 
-                    self.host, _t(self.hreq_at), _t(self.hres_at), 
+                    self.req_id.decode(), _states[self.state], self.cos_id,
+                    self.host, _t(self.hreq_at), _t(self.hres_at),
                     _t(self.rres_at), _t(self.dres_at)))
 
 
@@ -63,12 +63,16 @@ def request_host(cos_id: int):
           / MyProtocol(state=HREQ, req_id=req_id, cos_id=cos_id), verbose=0)
 
 
-# for testing
-if __name__ == '__main__':
+def start():
     bind_layers(IP, MyProtocol)
     bind_layers(Ether, MyProtocol)
     Monitor().start()
     Thread(target=MyProtocolAM(_requests=_requests, verbose=0)).start()
+
+
+# for testing
+if __name__ == '__main__':
+    start()
     print('\nClick ENTER to send a request\nOr wait to receive requests\n')
     while True:
         input()
