@@ -30,12 +30,16 @@
 
 from enum import Enum
 from time import time
+from copy import deepcopy
 
 
 class Model:
     '''
         Base class for all model classes.
     '''
+
+    def as_dict(self):
+        return self.__dict__
 
     # the following methods are for database operations
 
@@ -92,6 +96,11 @@ class Interface(Model):
         if not specs:
             specs = InterfaceSpecs()
         self.specs = specs
+
+    def as_dict(self):
+        d = deepcopy(self.__dict__)
+        d['specs'] = self.specs.as_dict()
+        return d
 
     # the following methods serve for access to the interface specs no
     # matter how they are implemented (whether they are attributes
@@ -163,6 +172,14 @@ class Node(Model):
             specs = NodeSpecs()
         self.specs = specs
 
+    def as_dict(self):
+        d = deepcopy(self.__dict__)
+        d['type'] = self.type.value
+        for name, intf in self.interfaces.items():
+            d['interfaces'][name] = intf.as_dict()
+        d['specs'] = self.specs.as_dict()
+        return d
+
     # the following methods serve for access to the node specs no
     # matter how they are implemented (whether they are attributes
     # in the object, are objects themselves within an Iterable, etc.)
@@ -226,6 +243,13 @@ class Link(Model):
         if not specs:
             specs = LinkSpecs()
         self.specs = specs
+
+    def as_dict(self):
+        d = deepcopy(self.__dict__)
+        d['src_port'] = self.src_port.as_dict()
+        d['dst_port'] = self.dst_port.as_dict()
+        d['specs'] = self.specs.as_dict()
+        return d
 
     # the following methods serve for access to the node specs no
     # matter how they are implemented (whether they are attributes
@@ -310,6 +334,11 @@ class CoS(Model):
             specs = CoSSpecs()
         self.specs = specs
 
+    def as_dict(self):
+        d = deepcopy(self.__dict__)
+        d['specs'] = self.specs.as_dict()
+        return d
+
     # the following methods serve for access to the CoS specs no
     # matter how they are implemented (whether they are attributes
     # in the object, are objects themselves within an Iterable, etc.)
@@ -388,6 +417,12 @@ class Application(Model):
         self.name = name
         self.cos = cos
         self.node = node
+
+    def as_dict(self):
+        d = deepcopy(self.__dict__)
+        d['cos'] = self.cos.as_dict()
+        d['node'] = self.node.as_dict()
+        return d
 
     # the following methods serve for access to the CoS specs no
     # matter how they are implemented (whether they are attributes

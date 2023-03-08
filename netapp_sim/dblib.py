@@ -89,12 +89,13 @@ def fetch(cls, **kwargs):
 # ============
 
 
-# singleton database connection
+# singleton database connection (for time optimization)
+# with check_same_thread == False, thread sync must be ensured manually
 
 class Connection:
     def __new__(self):
         if not hasattr(self, '_connection'):
-            self._connection = connect(DB_PATH)
+            self._connection = connect(DB_PATH, check_same_thread=False)
             # ensure tables exist
             self._connection.executescript(DEFINITIONS).connection.commit()
         return self._connection
