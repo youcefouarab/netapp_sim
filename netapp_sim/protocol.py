@@ -24,7 +24,7 @@
 
 
 from threading import Thread
-from time import time, sleep
+from time import time
 from datetime import datetime
 from string import ascii_letters, digits
 from random import choice
@@ -340,7 +340,6 @@ class MyProtocolAM(AnsweringMachine):
                     return Ether(dst=eth_src) / my_proto
             # new execution
             if _requests[_req_id].state == RRES:
-                sleep(4)
                 th = Thread(target=self._respond_data,
                             args=(my_proto, eth_src,))
                 _requests[_req_id].thread = th
