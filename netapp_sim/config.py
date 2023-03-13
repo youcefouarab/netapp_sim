@@ -1,7 +1,9 @@
 from os import path, environ
 from yaml import safe_load
 
+
 CONF = path.dirname(path.dirname(path.abspath(__file__))) + '/conf.yml'
+
 
 try:
     with open(CONF, 'r') as f:

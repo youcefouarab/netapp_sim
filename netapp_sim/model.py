@@ -1,56 +1,83 @@
 '''
-    This module includes classes used to model various networking concepts, 
-    such as network nodes, their types and their specs, network interfaces and 
-    their specs, network links and their specs, network applications, Classes 
-    of Service (CoS) and their requirements.
+    This module includes classes used to model Classes of Service (CoS) and 
+    their requirements, as well as network application hosting requests.
 
     Classes:
     --------
     Model: Base class for all model classes.
 
-    InterfaceSpecs: Network interface specs at given timestamp.
-
-    Interface: Network interface (port).
-
-    NodeSpecs: Network node specs at given timestamp.
-
-    Node: Network node.
-
-    LinkSpecs: Network link specs at given timestamp.
-
-    Link: Network link.
-
-    CoSSpecs: Set of minimum specs required to run applications belonging to 
-    the Class of Service.
+    CoSSpecs: Set of minimum specs required to host network applications 
+    belonging to Class of Service.
 
     CoS: Class of Service.
 
-    Application: Network application. 
+    Request: Network application hosting request.
 '''
 
-from enum import Enum
+
 from time import time
-from copy import deepcopy
+from datetime import datetime
+from string import ascii_letters, digits
+from random import choice
+
+from consts import HREQ, RREQ, DREQ, DRES, FAIL, REQ_ID_LEN, requests
 
 
 class Model:
     '''
         Base class for all model classes.
+
+        Methods:
+        --------
+        as_dict(flat): Converts object to dictionary and returns it. If flat 
+        is False, nested objects will become nested dictionaries; otherwise, 
+        all attributes in nested objects will be in parent dictionary.
+
+        save(): Insert as row in database table.
+
+        update(): Update row from object.
+
+        fetch(): Fetch row(s) from database table.
+
+        as_csv(): Convert database table to CSV file.
     '''
 
-    def as_dict(self):
-        return self.__dict__
+    def as_dict(self, flat: bool = False, _prefix: str = ''):
+        '''
+            Converts object to a dictionary and returns it. If flat is False, 
+            nested objects will become nested dictionaries; otherwise, all 
+            attributes in nested objects will be in parent dictionary.
+
+            To avoid name conflicts when flat is True, nested attribute name 
+            will be prefixed: <parent_attribute_name>_<nested_attribute_name> 
+            (example: Request.cos.id will become cos_id).
+        '''
+
+        if flat and _prefix:
+            _prefix += '_'
+        return {_prefix + str(key): val for key, val in self.__dict__.items()}
 
     # the following methods are for database operations
 
     def save(self):
         '''
-            Insert as a row in database table.
+            Insert as row in database table.
 
             Returns True if inserted, False if not.
         '''
+
         from dblib import save
         return save(self)
+
+    def update(self, _id: str = 'id'):
+        '''
+            Update row from obj.
+
+            Return True if updated, False if not.
+        '''
+
+        from dblib import update
+        return update(self, _id)
 
     @classmethod
     def fetch(cls, **kwargs):
@@ -63,237 +90,43 @@ class Model:
 
             Returns list of rows if selected, None if not.
         '''
+
         from dblib import fetch
         return fetch(cls, **kwargs)
 
+    @classmethod
+    def as_csv(cls, **kwargs):
+        '''
+            Convert database table to CSV file.
 
-class InterfaceSpecs(Model):
-    '''
-        Network interface specs.
-    '''
+            Filters can be applied through kwargs. Example:
 
-    def __init__(self, bandwidth_up: float = 0, bandwidth_down: float = 0,
-                 timestamp: float = time()):
-        self.bandwidth_up = bandwidth_up
-        self.bandwidth_down = bandwidth_down
-        self.timestamp = timestamp
+                >>> Request.as_csv(host=('=', 10.0.0.2))
 
+            Returns True if converted, False if not.
+        '''
 
-class Interface(Model):
-    '''
-        Network interface (port).
-
-        Recommendation: use the provided getters and setters for specs in case 
-        their structure changes in future updates.
-    '''
-
-    def __init__(self, name: str, num: int = -1, mac: str = '',
-                 ipv4: str = '', specs: InterfaceSpecs = None):
-        self.name = name
-        self.num = num
-        self.mac = mac
-        self.ipv4 = ipv4
-        if not specs:
-            specs = InterfaceSpecs()
-        self.specs = specs
-
-    def as_dict(self):
-        d = deepcopy(self.__dict__)
-        d['specs'] = self.specs.as_dict()
-        return d
-
-    # the following methods serve for access to the interface specs no
-    # matter how they are implemented (whether they are attributes
-    # in the object, are objects themselves within an Iterable, etc.)
-
-    def get_bandwidth_up(self):
-        return self.specs.bandwidth_up
-
-    def set_bandwidth_up(self, bandwidth_up: float = 0):
-        self.specs.bandwidth_up = bandwidth_up
-        self.set_timestamp()
-
-    def get_bandwidth_down(self):
-        return self.specs.bandwidth_down
-
-    def set_bandwidth_down(self, bandwidth_down: float = 0):
-        self.specs.bandwidth_down = bandwidth_down
-        self.set_timestamp()
-
-    def get_timestamp(self):
-        return self.specs.timestamp
-
-    def set_timestamp(self, timestamp: float = time()):
-        self.specs.timestamp = timestamp
-
-
-class NodeType(Enum):
-    '''
-        Network node type enumeration.
-    '''
-    SERVER = 'SERVER'
-    VM = 'VM'
-    IOT_OBJECT = 'IOT_OBJECT'
-    GATEWAY = 'GATEWAY'
-    SWITCH = 'SWITCH'
-    ROUTER = 'ROUTER'
-
-
-class NodeSpecs(Model):
-    '''
-        Network node specs at given timestamp.
-    '''
-
-    def __init__(self, cpu: int = 0, ram: float = 0, disk: float = 0,
-                 timestamp: float = time()):
-        self.cpu = cpu
-        self.ram = ram
-        self.disk = disk
-        self.timestamp = timestamp
-
-
-class Node(Model):
-    '''
-        Network node.
-
-        Recommendation: use the provided getters and setters for specs in case 
-        their structure changes in future updates.
-    '''
-
-    def __init__(self, id, state: bool, type: NodeType, label: str = '',
-                 interfaces: dict = {},
-                 specs: NodeSpecs = None):
-        self.id = id
-        self.state = state
-        self.type = type
-        self.label = label
-        self.interfaces = interfaces
-        if not specs:
-            specs = NodeSpecs()
-        self.specs = specs
-
-    def as_dict(self):
-        d = deepcopy(self.__dict__)
-        d['type'] = self.type.value
-        for name, intf in self.interfaces.items():
-            d['interfaces'][name] = intf.as_dict()
-        d['specs'] = self.specs.as_dict()
-        return d
-
-    # the following methods serve for access to the node specs no
-    # matter how they are implemented (whether they are attributes
-    # in the object, are objects themselves within an Iterable, etc.)
-
-    def get_cpu(self):
-        return self.specs.cpu
-
-    def set_cpu(self, cpu: int = 0):
-        self.specs.cpu = cpu
-        self.set_timestamp()
-
-    def get_ram(self):
-        return self.specs.ram
-
-    def set_ram(self, ram: float = 0):
-        self.specs.ram = ram
-        self.set_timestamp()
-
-    def get_disk(self):
-        return self.specs.disk
-
-    def set_disk(self, disk: float = 0):
-        self.specs.disk = disk
-        self.set_timestamp()
-
-    def get_timestamp(self):
-        return self.specs.timestamp
-
-    def set_timestamp(self, timestamp: float = time()):
-        self.specs.timestamp = timestamp
-
-
-class LinkSpecs(Model):
-    '''
-        Network link specs at given timestamp.
-    '''
-
-    def __init__(self, bandwidth: float = 0, delay: float = float('inf'),
-                 jitter: float = float('inf'), loss_rate: float = 1,
-                 timestamp: float = time()):
-        self.bandwidth = bandwidth
-        self.delay = delay
-        self.jitter = jitter
-        self.loss_rate = loss_rate
-        self.timestamp = timestamp
-
-
-class Link(Model):
-    '''
-        Network link.    
-
-        Recommendation: use the provided getters and setters for specs in case 
-        their structure changes in future updates.
-    '''
-
-    def __init__(self, src_port: Interface, dst_port: Interface,
-                 state: bool, specs: LinkSpecs = None):
-        self.src_port = src_port
-        self.dst_port = dst_port
-        self.state = state
-        if not specs:
-            specs = LinkSpecs()
-        self.specs = specs
-
-    def as_dict(self):
-        d = deepcopy(self.__dict__)
-        d['src_port'] = self.src_port.as_dict()
-        d['dst_port'] = self.dst_port.as_dict()
-        d['specs'] = self.specs.as_dict()
-        return d
-
-    # the following methods serve for access to the node specs no
-    # matter how they are implemented (whether they are attributes
-    # in the object, are objects themselves within an Iterable, etc.)
-
-    def get_bandwidth(self):
-        return self.specs.bandwidth
-
-    def set_bandwidth(self, bandwidth: float = 0):
-        self.specs.bandwidth = bandwidth
-        self.set_timestamp()
-
-    def get_delay(self):
-        return self.specs.delay
-
-    def set_delay(self, delay: float = float('inf')):
-        self.specs.delay = delay
-        self.set_timestamp()
-
-    def get_jitter(self):
-        return self.specs.jitter
-
-    def set_jitter(self, jitter: float = float('inf')):
-        self.specs.jitter = jitter
-        self.set_timestamp()
-
-    def get_loss_rate(self):
-        return self.specs.loss_rate
-
-    def set_loss_rate(self, loss_rate: float = 1):
-        self.specs.loss_rate = loss_rate
-        self.set_timestamp()
-
-    def get_timestamp(self):
-        return self.specs.timestamp
-
-    def set_timestamp(self, timestamp: float = time()):
-        self.specs.timestamp = timestamp
+        from dblib import as_csv
+        return as_csv(cls, **kwargs)
 
 
 class CoSSpecs(Model):
     '''
-        Set of minimum specs required to run applications belonging to the 
-        Class of Service.
+        Set of minimum specs required to host network applications belonging 
+        to Class of Service.
+
+        Attributes:
+        -----------
+        max_response_time: default is inf
+        min_concurrent_users: default is 0
+        min_requests_per_second: default is 0
+        min_bandwidth: default is 0
+        max_delay: default is inf
+        max_jitter: default is inf
+        max_loss_rate: default is 1
+        min_cpu: default is 0
+        min_ram: default is 0
+        min_disk: default is 0
     '''
 
     def __init__(self,
@@ -323,8 +156,16 @@ class CoS(Model):
     '''
         Class of Service.
 
-        Recommendation: use the provided getters and setters for specs in case 
+        Recommendation: use provided getters and setters for specs in case 
         their structure changes in future updates.
+
+        Attributes:
+        -----------
+        id: CoS ID.
+
+        name: CoS name.
+
+        specs: CoSSpecs object.
     '''
 
     def __init__(self, id: int, name: str, specs: CoSSpecs = None):
@@ -334,9 +175,15 @@ class CoS(Model):
             specs = CoSSpecs()
         self.specs = specs
 
-    def as_dict(self):
-        d = deepcopy(self.__dict__)
-        d['specs'] = self.specs.as_dict()
+    def as_dict(self, flat: bool = False, _prefix: str = ''):
+        d = super().as_dict(flat, _prefix)
+        if not flat:
+            d['specs'] = self.specs.as_dict()
+        else:
+            if _prefix:
+                _prefix += '_'
+            del d[_prefix + 'specs']
+            d.update(self.specs.as_dict(flat, _prefix=_prefix+'specs'))
         return d
 
     # the following methods serve for access to the CoS specs no
@@ -404,25 +251,82 @@ class CoS(Model):
         self.specs.min_disk = disk
 
 
-class Application(Model):
+class Request(Model):
     '''
-        Network application. 
+        Network application hosting request.
 
-        Recommendation: use the provided getters for specs in case their 
-        structure changes in future updates.
+        Attributes:
+        -----------
+        id: Request ID.
+
+        cos: CoS object of required Class of Service.
+
+        data: Input data bytes.
+
+        result: Execution result bytes.
+
+        host: Network application host IP address.
+
+        state: Request state, enumeration of HREQ (1) (waiting for host), RREQ 
+        (3) (waiting for resources), DREQ (6) (waiting for data), DRES (7) 
+        (finished), FAIL (0) (failed). Default is HREQ (1).
+
+        hreq_at: Host request timestamp. Default is object creation time.
+
+        hres_at: First host response timestamp.
+
+        rres_at: Resource reservation response timestamp.
+
+        dres_at: Data exchange response timestamp.
     '''
 
-    def __init__(self, id: int, name: str, cos: CoS, node: Node):
-        self.id = id
-        self.name = name
+    _states = {
+        HREQ: 'waiting for host',
+        RREQ: 'waiting for resources',
+        DREQ: 'waiting for data',
+        DRES: 'finished',
+        FAIL: 'failed'
+    }
+
+    def __init__(self, cos: CoS, data: bytes):
+        self.id = self._generate_request_id()
         self.cos = cos
-        self.node = node
+        self.data = data
+        self.result = None
+        self.host = None
+        self.state = HREQ
+        self.hreq_at = time()
+        self.hres_at = None
+        self.rres_at = None
+        self.dres_at = None
+        self._late = False
 
-    def as_dict(self):
-        d = deepcopy(self.__dict__)
-        d['cos'] = self.cos.as_dict()
-        d['node'] = self.node.as_dict()
+    def _t(self, x):
+        return datetime.fromtimestamp(x) if x != None else x
+
+    def __repr__(self):
+        return ('\nrequest(id=%s, state=(%s), cos=%s, host=%s, hreq_at=%s, '
+                'hres_at=%s, rres_at=%s, dres_at=%s)\n' % (
+                    self.id, self._states[self.state], self.cos.name,
+                    self.host, self._t(self.hreq_at), self._t(self.hres_at),
+                    self._t(self.rres_at), self._t(self.dres_at)))
+
+    def as_dict(self, flat: bool = False):
+        d = super().as_dict(flat)
+        del d['_late']
+        if not flat:
+            d['cos'] = self.cos.as_dict()
+        else:
+            del d['cos']
+            d.update(self.cos.as_dict(flat, _prefix='cos'))
         return d
+
+    def _generate_request_id(self):
+        id = '_'
+        while id in requests:
+            id = ''.join(
+                choice(ascii_letters + digits) for _ in range(REQ_ID_LEN))
+        return id
 
     # the following methods serve for access to the CoS specs no
     # matter how they are implemented (whether they are attributes

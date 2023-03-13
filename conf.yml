@@ -1,3 +1,12 @@
+SIMULATION:
+    # capacities (resources to be reserved)
+    SIM_CPU: 4
+    SIM_RAM: 2048   # in MB
+    SIM_DISK: 10    # in GB
+    # execution (time interval)
+    EXEC_T_MIN: 0
+    EXEC_T_MAX: 1
+
 DATABASE:
     DB_PATH: ':memory:'
     DB_DEFS_PATH: data/definitions.sql
