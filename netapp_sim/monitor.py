@@ -6,6 +6,7 @@
     dictionary.
 '''
 
+
 from threading import Thread
 from time import monotonic, sleep
 from psutil import net_if_addrs, net_if_stats, net_io_counters
@@ -40,7 +41,9 @@ class Monitor(metaclass=SingletonMeta):
 
         {
         \t  'cpu_count': <int>,
+        \t  'memory_total: <float>, # in MB
         \t  'memory_free': <float>, # in MB
+        \t  'disk_total': <float>, # in GB
         \t  'disk_free': <float>, # in GB
         \t  'iface_name': {
         \t\t    'bandwidth_up': <float>, # in Mbit/s
@@ -104,9 +107,12 @@ class Monitor(metaclass=SingletonMeta):
         while self._run:
             # node specs
             self.measures['cpu_count'] = cpu_count()
-            self.measures['memory_free'] = virtual_memory().available / \
-                1e+6  # in MB
-            self.measures['disk_free'] = disk_usage('/').free / 1e+9  # in GB
+            mem = virtual_memory()
+            self.measures['memory_total'] = mem.total / 1e+6  # in MB
+            self.measures['memory_free'] = mem.available / 1e+6  # in MB
+            disk = disk_usage('/')
+            self.measures['disk_total'] = disk.total / 1e+9  # in GB
+            self.measures['disk_free'] = disk.free / 1e+9  # in GB
             # link specs
             for iface in io:
                 if iface != 'lo':

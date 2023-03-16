@@ -1,3 +1,12 @@
+'''
+    This module contains metaclasses.
+
+    Classes:
+    --------
+    SingletonMeta: Thread-safe implementation of Singleton design pattern.
+'''
+
+
 from threading import Lock
 
 
@@ -7,17 +16,12 @@ class SingletonMeta(type):
     '''
 
     _instances = {}
-
+    # to synchronize threads during first access to Singleton
     _lock: Lock = Lock()
-    '''
-        Lock will synchronize threads during first access to Singleton.
-    '''
 
+    # possible changes to value of `__init__` argument do not affect returned
+    # instance.
     def __call__(cls, *args, **kwargs):
-        '''
-            Possible changes to value of `__init__` argument do not affect
-            returned instance.
-        '''
         # Now, imagine that the program has just been launched. Since there's
         # no Singleton instance yet, multiple threads can simultaneously pass
         # the previous conditional and reach this point almost at the same

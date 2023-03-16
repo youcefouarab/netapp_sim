@@ -30,42 +30,82 @@ from time import sleep
 
 from monitor import Monitor
 from model import Request
+from consts import MY_IP
 import config
 
 
-# simulation constants of resource capacities
-try:
-    SIM_CPU = int(getenv('SIM_CPU', None))
-except:
-    SIM_CPU = None
-if SIM_CPU == None:
-    print(' *** ERROR: SIM_CPU parameter invalid or missing from conf.yml.')
+# host capacities (offered resources)
+_host = ''
+if getenv('HOSTS_USE_DEFAULT', False) == 'True':
+    _host = 'DEFAULT'
+    _caps = getenv('HOSTS_DEFAULT', None)
+else:
+    _host = MY_IP
+    _caps = getenv('HOSTS_' + MY_IP, None)
+    if _caps == None:
+        print(' *** WARNING: Host capacities for ' + MY_IP + ' missing '
+              'from conf.yml (even though USE_DEFAULT is False). '
+              'Defaulting to HOSTS:DEFAULT.')
+        _caps = getenv('HOSTS_DEFAULT', None)
+if _caps == None:
+    print(' *** ERROR: Default host capacities missing from conf.yml.')
     exit()
+_caps = eval(_caps)
 
 try:
-    SIM_RAM = float(getenv('SIM_RAM', None))
+    CPU = int(_caps['CPU'])
 except:
-    SIM_RAM = None
-if SIM_RAM == None:
-    print(' *** ERROR: SIM_RAM parameter invalid or missing from conf.yml.')
+    print(' *** ERROR: HOSTS:' + _host + ':CPU parameter invalid or missing '
+          'from conf.yml.')
     exit()
-
 try:
-    SIM_DISK = float(getenv('SIM_DISK', None))
+    RAM = int(_caps['RAM'])
 except:
-    SIM_DISK = None
-if SIM_DISK == None:
-    print(' *** ERROR: SIM_DISK parameter invalid or missing from conf.yml.')
+    print(' *** ERROR: HOSTS:' + _host + ':RAM parameter invalid or missing '
+          'from conf.yml.')
+    exit()
+try:
+    DISK = int(_caps['DISK'])
+except:
+    print(' *** ERROR: HOSTS:' + _host + ':DISK parameter invalid or missing '
+          'from conf.yml.')
     exit()
 
-_capacities = {  
-    'cpu': SIM_CPU,
-    'ram': SIM_RAM,     # in MB
-    'disk': SIM_DISK    # in GB
-}
+# real monitoring config
+SIM_ON = getenv('SIMULATION_ACTIVE', False) == 'True'
+monitor = Monitor()
+measures = monitor.measures
+monitor_period = 0.1  # monitor.monitor_period
+if not SIM_ON:
+    # start monitor
+    monitor.start()
+    while 'cpu_count' not in measures:
+        sleep(monitor_period)
+    if CPU > measures['cpu_count']:
+        print(' *** ERROR: Host cannot offer %d CPUs when it only has %d. '
+              'Activate simulation to allow more resources than there really '
+              'are.' % (CPU, measures['cpu_count']))
+        monitor.stop()
+        exit()
+    while 'memory_total' not in measures:
+        sleep(monitor_period)
+    if RAM > measures['memory_total']:
+        print(' *** ERROR: Host cannot offer %.2fMB of RAM when it only has '
+              '%.2fMB. Activate simulation to allow more resources than '
+              'there are available.' % (RAM, measures['memory_total']))
+        monitor.stop()
+        exit()
+    while 'disk_total' not in measures:
+        sleep(monitor_period)
+    if DISK > measures['disk_total']:
+        print(' *** ERROR: Host cannot offer %.2fGB of disk when it only has '
+              '%.2fGB. Activate simulation to allow more resources than '
+              'there are available.' % (DISK, measures['disk_total']))
+        monitor.stop()
+        exit()
 
 # simulation variables of reserved resources
-_reserved = {  
+_reserved = {
     'cpu': 0,
     'ram': 0,  # in MB
     'disk': 0  # in GB
@@ -74,25 +114,36 @@ _reserved_lock = Lock()  # for thread safety
 
 # simulated exec time interval
 try:
-    EXEC_T_MIN = float(getenv('EXEC_T_MIN', 0))
+    SIM_EXEC_MIN = float(getenv('SIMULATION_EXEC_MIN', None))
+    try:
+        SIM_EXEC_MAX = float(getenv('SIMULATION_EXEC_MAX', None))
+        if SIM_EXEC_MAX < SIM_EXEC_MIN:
+            print(' *** WARNING: SIMULATION:EXEC_MIN and SIMULATION:EXEC_MAX '
+                  'invalid. Defaulting to [0s, 1s].')
+            SIM_EXEC_MIN = 0
+            SIM_EXEC_MAX = 1
+    except:
+        print(' *** WARNING: SIMULATION:EXEC_MAX parameter invalid or missing '
+              'from conf.yml. Defaulting to [0s, 1s].')
+        SIM_EXEC_MIN = 0
+        SIM_EXEC_MAX = 1
 except:
-    EXEC_T_MIN = 0
-
-try:
-    EXEC_T_MAX = float(getenv('EXEC_T_MAX', 1))
-except:
-    EXEC_T_MAX = 1
-
-
-# start monitor
-# monitor = Monitor()
-# monitor.start()
+    print(' *** WARNING: SIMULATION:EXEC_MIN parameter invalid or missing '
+          'from conf.yml. Defaulting to [0s, 1s].')
+    SIM_EXEC_MIN = 0
+    SIM_EXEC_MAX = 1
 
 
 def _get_resources(quiet: bool = False):
-    cpu = _capacities['cpu'] - _reserved['cpu']
-    ram = _capacities['ram'] - _reserved['ram']
-    disk = _capacities['disk'] - _reserved['disk']
+    cpu = CPU - _reserved['cpu']
+    _ram = RAM
+    if not SIM_ON and measures['memory_free'] < RAM:
+        _ram = measures['memory_free']
+    ram = _ram - _reserved['ram']
+    _disk = DISK
+    if not SIM_ON and measures['disk_free'] < DISK:
+        _disk = measures['disk_free']
+    disk = _disk - _reserved['disk']
     if not quiet:
         print('current(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (cpu, ram, disk))
     return cpu, ram, disk
@@ -103,6 +154,7 @@ def check_resources(req: Request, quiet: bool = False):
         Returns True if current resources can satisfy requirements of Request, 
         False if not.
     '''
+
     with _reserved_lock:
         min_cpu = req.get_min_cpu()
         min_ram = req.get_min_ram()
@@ -111,7 +163,8 @@ def check_resources(req: Request, quiet: bool = False):
             print('required(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (
                 min_cpu, min_ram, min_disk))
         cpu, ram, disk = _get_resources(quiet)
-        return cpu >= min_cpu and ram >= min_ram and disk >= min_disk
+        return (cpu >= min_cpu and ram >= min_ram and disk >= min_disk,
+                cpu, ram, disk)
 
 
 def reserve_resources(req: Request):
@@ -121,6 +174,7 @@ def reserve_resources(req: Request):
 
         Returns True if reserved, False if not.
     '''
+
     with _reserved_lock:
         min_cpu = req.get_min_cpu()
         min_ram = req.get_min_ram()
@@ -145,6 +199,7 @@ def free_resources(req: Request):
 
         Returns True if freed, False if not.
     '''
+
     with _reserved_lock:
         _reserved['cpu'] -= req.get_min_cpu()
         if _reserved['cpu'] < 0:
@@ -167,5 +222,6 @@ def execute(data: bytes):
 
         Returns result.
     '''
-    sleep(uniform(EXEC_T_MIN, EXEC_T_MAX))
-    return b'response'
+
+    sleep(uniform(SIM_EXEC_MIN, SIM_EXEC_MAX))
+    return b'result'

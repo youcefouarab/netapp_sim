@@ -1,12 +1,40 @@
+PROTOCOL:
+  TIMEOUT: 1  # in seconds, time to wait for answer after sending packet
+  RETRIES: 3  # number of times to send unanswered packet
+
 SIMULATION:
-    # capacities (resources to be reserved)
-    SIM_CPU: 4
-    SIM_RAM: 2048   # in MB
-    SIM_DISK: 10    # in GB
-    # execution (time interval)
-    EXEC_T_MIN: 0
-    EXEC_T_MAX: 1
+  # activate simulation
+  ACTIVE: True  # if True, capacities will be simulated
+                # if False, real monitoring will be activated
+  # execution (time interval)
+  EXEC_MIN: 0
+  EXEC_MAX: 1
+
+# hosts capacities (resources to offer)
+HOSTS:
+  USE_DEFAULT: True # if True, capacities will be gotten from DEFAULT
+                    # if False, capacities will be gotten from host's IP
+  # default capacities (**required even if not used**)
+  DEFAULT:
+    CPU: 1
+    RAM: 1024  # in MB
+    DISK: 10   # in GB
+  # capacities of host 10.0.0.1
+  10.0.0.1:
+    CPU: 1
+    RAM: 1024  # in MB
+    DISK: 10   # in GB
+  # capacities of host 10.0.0.2
+  10.0.0.2:
+    CPU: 2
+    RAM: 2048  # in MB
+    DISK: 20   # in GB
+  # capacities of host 10.0.0.3
+  10.0.0.3:
+    CPU: 4
+    RAM: 4096  # in MB
+    DISK: 40   # in GB
 
 DATABASE:
-    DB_PATH: ':memory:'
-    DB_DEFS_PATH: data/definitions.sql
+  PATH: data/data.db # ':memory:'
+  DEFS_PATH: data/definitions.sql
