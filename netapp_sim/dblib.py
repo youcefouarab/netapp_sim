@@ -86,7 +86,7 @@ def insert(obj: Model):
         vals += ')'
         Connection().execute('insert into {} {} values {}'.format(
             _tables[obj.__class__.__name__], str(cols), vals),
-            _adapt(obj)).connection.commit()
+            _adapt(obj))  # .connection.commit()
         return True
     except Exception as e:
         print(' *** dblib.insert', e.__class__.__name__, ':', e)
@@ -113,7 +113,7 @@ def update(obj: Model, _id: tuple = ('id',)):
             _adapt(obj) + vals)
         Connection().execute('update {} set {} {}'.format(
             _tables[obj.__class__.__name__], sets[:-1], where),
-            _adapt(obj) + vals).connection.commit()
+            _adapt(obj) + vals)  # .connection.commit()
         return True
     except Exception as e:
         print(' *** dblib.update', e.__class__.__name__, ':', e)

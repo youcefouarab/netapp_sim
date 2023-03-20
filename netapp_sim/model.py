@@ -346,7 +346,9 @@ class Request(Model):
         '''
 
         self._attempt_no += 1
-        self.attempts[self._attempt_no] = Attempt(self.id, self._attempt_no)
+        attempt = Attempt(self.id, self._attempt_no)
+        self.attempts[self._attempt_no] = attempt
+        return attempt
 
     # the following methods serve for access to the CoS specs no
     # matter how they are implemented (whether they are attributes

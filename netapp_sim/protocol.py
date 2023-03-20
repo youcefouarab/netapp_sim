@@ -94,11 +94,11 @@ class MyProtocol(Packet):
         acknowledgement), DCAN (9) (data exchange cancellation), DWAIT (10) 
         (data exchange wait). Default is HREQ (1).
 
+        req_id: String of 10 bytes indicating the request's ID. Default is ''.
+
         attempt_no: Integer of 4 bytes indicating the attempt number. Default 
         is 1. Conditional field for state == HREQ (1), state == HRES (2), 
         state == DREQ (6) or state == DRES(7). 
-
-        req_id: String of 10 bytes indicating the request's ID. Default is ''.
 
         cos_id: Integer of 4 bytes indicating the application's CoS ID. Default 
         is 1 (best-effort). Conditional field for state == HREQ (1).
@@ -470,7 +470,6 @@ def send_request(cos_id: int, data: bytes):
     req = Request(req_id, cos_dict[cos_id], data)
     requests[req_id] = req
 
-    attempt_no = 0
     hreq_rt = PROTO_RETRIES
     hres = None
 
@@ -479,9 +478,7 @@ def send_request(cos_id: int, data: bytes):
     while not hres and hreq_rt and not req.dres_at:
         req.host = None
         req.state = HREQ
-        attempt_no += 1
-        attempt = Attempt(req_id, attempt_no)
-        req.attempts[attempt_no] = attempt
+        attempt = req.new_attempt()
         attempt.state = HREQ
         attempt.hreq_at = time()
         if not req.hreq_at:
@@ -493,7 +490,7 @@ def send_request(cos_id: int, data: bytes):
         hres = srp1(Ether(dst=BROADCAST_MAC)
                     / IP(dst=BROADCAST_IP)
                     / MyProtocol(state=HREQ, req_id=req_id, cos_id=req.cos.id,
-                                 attempt_no=attempt_no),
+                                 attempt_no=attempt.attempt_no),
                     timeout=PROTO_TIMEOUT, verbose=0)
         if hres and not req.dres_at:
             attempt.hres_at = time()
@@ -558,6 +555,7 @@ def send_request(cos_id: int, data: bytes):
                         # send and wait for response
                         dres = sr1(IP(dst=req.host)
                                    / MyProtocol(state=DREQ, req_id=req_id,
+                                                attempt_no=attempt.attempt_no,
                                                 data=data),
                                    timeout=PROTO_TIMEOUT, verbose=0)
                         if dres and not req.dres_at:

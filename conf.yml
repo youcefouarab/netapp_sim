@@ -12,7 +12,7 @@ SIMULATION:
 
 # hosts capacities (resources to offer)
 HOSTS:
-  USE_DEFAULT: True # if True, capacities will be gotten from DEFAULT
+  USE_DEFAULT: False # if True, capacities will be gotten from DEFAULT
                     # if False, capacities will be gotten from host's IP
   # default capacities (**required even if not used**)
   DEFAULT:
@@ -31,9 +31,9 @@ HOSTS:
     DISK: 20   # in GB
   # capacities of host 10.0.0.3
   10.0.0.3:
-    CPU: 4
-    RAM: 4096  # in MB
-    DISK: 40   # in GB
+    CPU: 1
+    RAM: 512  # in MB
+    DISK: 10   # in GB
 
 DATABASE:
   PATH: data/data.db # ':memory:'
