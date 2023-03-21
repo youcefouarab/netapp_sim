@@ -20,6 +20,7 @@
 '''
 
 
+from copy import copy
 from time import time
 from datetime import datetime
 
@@ -58,7 +59,8 @@ class Model:
 
         if flat and _prefix:
             _prefix += '_'
-        return {_prefix + str(key): val for key, val in self.__dict__.items()}
+        return {_prefix + str(key): copy(val) 
+                for key, val in self.__dict__.items()}
 
     # the following methods are for database operations
 
@@ -123,14 +125,23 @@ class CoSSpecs(Model):
         Attributes:
         -----------
         max_response_time: default is inf
+
         min_concurrent_users: default is 0
+
         min_requests_per_second: default is 0
+
         min_bandwidth: default is 0
+        
         max_delay: default is inf
+
         max_jitter: default is inf
+
         max_loss_rate: default is 1
+
         min_cpu: default is 0
+
         min_ram: default is 0
+        
         min_disk: default is 0
     '''
 
