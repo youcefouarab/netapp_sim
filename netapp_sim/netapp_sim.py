@@ -5,8 +5,17 @@
 
 
 from threading import Thread
+from logging import getLogger
+from flask import cli
 
 from protocol import send_request, cos_names
+from gui import app
+from consts import MY_IP
+
+
+# disable flask console messages
+getLogger('werkzeug').disabled = True
+cli.show_server_banner = lambda *args: None
 
 
 def _list_cos():
@@ -26,6 +35,11 @@ def _send_request(cos_id: int, data: bytes):
 
 # for testing
 if __name__ == '__main__':
+    # starting web server (gui)
+    app.logger.disabled = True
+    Thread(target=app.run, args=('0.0.0.0',)).start()
+    print('\nServer starting at http://' + MY_IP + ':8050')
+    # starting cli
     print('\nChoose a Class of Service and click ENTER to send a request\n'
           'Or wait to receive requests')
     _list_cos()
