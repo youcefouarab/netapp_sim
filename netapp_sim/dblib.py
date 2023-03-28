@@ -15,6 +15,8 @@
 
 from os import getenv
 from os.path import dirname, abspath
+from queue import Queue, Empty
+from threading import Thread, Event, Lock
 from sqlite3 import connect
 from csv import writer
 
@@ -62,6 +64,10 @@ _tables = {
     Response.__name__: 'responses'
 }
 
+# queue managing db operations from multiple threads
+_queue = Queue()
+_rows = {}
+
 
 # ====================
 #     MAIN METHODS
@@ -84,10 +90,20 @@ def insert(obj: Model):
             if i < _len - 1:
                 vals += ','
         vals += ')'
-        Connection().execute('insert into {} {} values {}'.format(
-            _tables[obj.__class__.__name__], str(cols), vals),
-            _adapt(obj))  # .connection.commit()
+
+        event = Event()
+
+        global _queue
+        _queue.put((
+            'insert into {} {} values {}'.format(
+                _tables[obj.__class__.__name__], str(cols), vals),
+            _adapt(obj),
+            event
+        ))
+
+        event.wait()
         return True
+
     except Exception as e:
         print(' *** dblib.insert', e.__class__.__name__, ':', e)
         return False
@@ -108,13 +124,20 @@ def update(obj: Model, _id: tuple = ('id',)):
         sets = ''
         for col in cols:
             sets += col + '=?,'
-        print('update {} set {} {}'.format(
-            _tables[obj.__class__.__name__], sets[:-1], where),
-            _adapt(obj) + vals)
-        Connection().execute('update {} set {} {}'.format(
-            _tables[obj.__class__.__name__], sets[:-1], where),
-            _adapt(obj) + vals)  # .connection.commit()
+
+        event = Event()
+
+        global _queue
+        _queue.put((
+            'update {} set {} {}'.format(
+                _tables[obj.__class__.__name__], sets[:-1], where),
+            _adapt(obj) + vals,
+            event
+        ))
+
+        event.wait()
         return True
+
     except Exception as e:
         print(' *** dblib.update', e.__class__.__name__, ':', e)
         return False
@@ -135,12 +158,24 @@ def select(cls, fields: tuple = ('*',), as_obj: bool = True, **kwargs):
 
     try:
         where, vals = _get_where_str(**kwargs)
-        rows = Connection().execute('select {} from {} {}'.format(
-            _get_fields_str(fields), _tables[cls.__name__], where),
-            vals).fetchall()
+
+        event = Event()
+
+        global _queue
+        _queue.put((
+            'select {} from {} {}'.format(
+                _get_fields_str(fields), _tables[cls.__name__], where),
+            vals,
+            event
+        ))
+
+        event.wait()
+
+        global _rows
         if as_obj:
-            return _convert(rows, cls)
-        return rows
+            return _convert(_rows[event], cls)
+        return _rows[event]
+
     except Exception as e:
         print(' *** dblib.select', e.__class__.__name__, ':', e)
         return None
@@ -158,15 +193,8 @@ def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', _suffix: str = '',
         Returns True if converted, False if not.
     '''
 
-    where, vals = _get_where_str(**kwargs)
-    try:
-        rows = Connection().execute('select {} from {} {}'.format(
-            _get_fields_str(fields), _tables[cls.__name__], where),
-            vals).fetchall()
-    except Exception as e:
-        print(' *** dblib.as_csv', e.__class__.__name__, ':', e)
-        return False
-    else:
+    rows = select(cls, fields, False, **kwargs)
+    if rows != None:
         try:
             if fields[0] == '*':
                 fields = _get_columns(cls)
@@ -177,9 +205,12 @@ def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', _suffix: str = '',
                 csv_writer.writerow(fields)
                 csv_writer.writerows(rows)
             return True
+
         except Exception as e:
             print(' *** dblib.as_csv', e.__class__.__name__, ':', e)
             return False
+    else:
+        return False
 
 
 # ============
@@ -192,9 +223,29 @@ def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', _suffix: str = '',
 class Connection:
     def __new__(self):
         if not hasattr(self, '_connection'):
-            self._connection = connect(DB_PATH, check_same_thread=False)
+            self._connection = connect(DB_PATH)
             self._connection.executescript(DEFINITIONS).connection.commit()
         return self._connection
+
+
+def _execute():
+    global _queue
+    global _rows
+    while True:
+        try:
+            sql, params, event = _queue.get()
+            cursor = Connection().execute(sql, params)
+            if sql[0:6] == 'select':
+                _rows[event] = cursor.fetchall()
+            event.set()
+            if _queue.empty():
+                cursor.connection.commit()
+
+        except Exception as e:
+            print(' *** dblib._execute', e.__class__.__name__, ':', e)
+
+
+Thread(target=_execute).start()
 
 
 # encode object as table row
