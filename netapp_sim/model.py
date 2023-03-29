@@ -85,7 +85,8 @@ class Model:
         return update(self, _id)
 
     @classmethod
-    def select(cls, fields: tuple = ('*',), as_obj: bool = True, **kwargs):
+    def select(cls, fields: tuple = ('*',), groups: tuple = None, 
+               as_obj: bool = True, **kwargs):
         '''
             Select row(s) from database table.
 
@@ -99,7 +100,18 @@ class Model:
         '''
 
         from dblib import select
-        return select(cls, fields, as_obj, **kwargs)
+        return select(cls, fields, groups, as_obj, **kwargs)
+
+    @classmethod
+    def select_page(cls, page: int, page_size: int, fields: tuple = ('*',), 
+                    orders: tuple = None, as_obj: bool = True, **kwargs):
+        '''
+            ...
+        '''
+        
+        from dblib import select_page
+        return select_page(cls, page, page_size, fields, orders, as_obj, 
+                           **kwargs)
 
     @classmethod
     def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', **kwargs):
@@ -115,6 +127,15 @@ class Model:
 
         from dblib import as_csv
         return as_csv(cls, fields, abs_path, **kwargs)
+
+    @classmethod
+    def columns(cls):
+        '''
+            Returns list of columns of database table.
+        '''
+
+        from dblib import _get_columns
+        return _get_columns(cls)
 
 
 class CoSSpecs(Model):

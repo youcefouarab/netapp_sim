@@ -15,8 +15,8 @@
 
 from os import getenv
 from os.path import dirname, abspath
-from queue import Queue, Empty
-from threading import Thread, Event, Lock
+from queue import Queue
+from threading import Thread, Event
 from sqlite3 import connect
 from csv import writer
 
@@ -143,7 +143,8 @@ def update(obj: Model, _id: tuple = ('id',)):
         return False
 
 
-def select(cls, fields: tuple = ('*',), as_obj: bool = True, **kwargs):
+def select(cls, fields: tuple = ('*',), groups: tuple = None,
+           as_obj: bool = True, **kwargs):
     '''
         Select row(s) from database table of cls.
 
@@ -158,13 +159,15 @@ def select(cls, fields: tuple = ('*',), as_obj: bool = True, **kwargs):
 
     try:
         where, vals = _get_where_str(**kwargs)
+        group_by = _get_groups_str(groups)
 
         event = Event()
 
         global _queue
         _queue.put((
             'select {} from {} {}'.format(
-                _get_fields_str(fields), _tables[cls.__name__], where),
+                _get_fields_str(fields), _tables[cls.__name__],
+                where + group_by),
             vals,
             event
         ))
@@ -181,6 +184,45 @@ def select(cls, fields: tuple = ('*',), as_obj: bool = True, **kwargs):
         return None
 
 
+def select_page(cls, page: int, page_size: int, fields: tuple = ('*',),
+                orders: tuple = None, as_obj: bool = True, **kwargs):
+    '''
+        ...
+    '''
+
+    try:
+        where, vals = _get_where_str(**kwargs)
+        order_by = _get_orders_str(orders)
+        if not where:
+            where += ' where '
+        else:
+            where += ' and '
+        where += ' oid not in (select oid from {} {} limit {}) '.format(
+            _tables[cls.__name__], order_by, (page - 1) * page_size)
+
+        event = Event()
+
+        global _queue
+        _queue.put((
+            'select {} from {} {} limit {}'.format(
+                _get_fields_str(fields), _tables[cls.__name__],
+                where + order_by, page_size),
+            vals,
+            event
+        ))
+
+        event.wait()
+
+        global _rows
+        if as_obj:
+            return _convert(_rows[event], cls)
+        return _rows[event]
+
+    except Exception as e:
+        print(' *** dblib.select_page', e.__class__.__name__, ':', e)
+        return None
+
+
 def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', _suffix: str = '',
            **kwargs):
     '''
@@ -193,7 +235,7 @@ def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', _suffix: str = '',
         Returns True if converted, False if not.
     '''
 
-    rows = select(cls, fields, False, **kwargs)
+    rows = select(cls, fields, as_obj=False, **kwargs)
     if rows != None:
         try:
             if fields[0] == '*':
@@ -225,6 +267,7 @@ class Connection:
         if not hasattr(self, '_connection'):
             self._connection = connect(DB_PATH)
             self._connection.executescript(DEFINITIONS).connection.commit()
+            self._connection.row_factory = lambda _, row: list(row)
         return self._connection
 
 
@@ -238,7 +281,7 @@ def _execute():
             if sql[0:6] == 'select':
                 _rows[event] = cursor.fetchall()
             event.set()
-            if _queue.empty():
+            if sql[0:6] != 'select' and _queue.empty():
                 cursor.connection.commit()
 
         except Exception as e:
@@ -360,3 +403,21 @@ def _get_where_str(**kwargs):
     if where:
         where = ' where ' + where[:-4]
     return where, vals
+
+
+def _get_groups_str(groups: tuple = None):
+    groups_str = ''
+    if groups:
+        groups_str += ' group by '
+        for group in groups:
+            groups_str += group + ','
+    return groups_str[:-1]
+
+
+def _get_orders_str(orders: tuple = None):
+    orders_str = ''
+    if orders:
+        orders_str += ' order by '
+        for order in orders:
+            orders_str += order + ','
+    return orders_str[:-1]
