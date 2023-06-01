@@ -2,7 +2,8 @@
 --     CoS table definition
 -- ============================
 
-create table if not exists cos (
+drop table if exists cos;
+create table cos (
 	id integer primary key,
   	name text not null unique,
     max_response_time real,
