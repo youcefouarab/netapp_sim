@@ -1,4 +1,8 @@
-import sys
-import os
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
+from sys import path
+from os.path import dirname, abspath, join
+
+
+path.insert(0, abspath(join(dirname(__file__), '..')))
+
+
+from netapp_sim.protocol import send_request

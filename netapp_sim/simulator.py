@@ -27,6 +27,7 @@ from os import getenv
 from threading import Lock
 from random import uniform
 from time import sleep
+from logging import info
 
 from monitor import Monitor
 from model import Request
@@ -145,7 +146,7 @@ def _get_resources(quiet: bool = False):
         _disk = measures['disk_free']
     disk = _disk - _reserved['disk']
     if not quiet:
-        print('current(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (cpu, ram, disk))
+        info('current(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (cpu, ram, disk))
     return cpu, ram, disk
 
 
@@ -160,7 +161,7 @@ def check_resources(req: Request, quiet: bool = False):
         min_ram = req.get_min_ram()
         min_disk = req.get_min_disk()
         if not quiet:
-            print('required(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (
+            info('required(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (
                 min_cpu, min_ram, min_disk))
         cpu, ram, disk = _get_resources(quiet)
         return (cpu >= min_cpu and ram >= min_ram and disk >= min_disk,
@@ -179,7 +180,7 @@ def reserve_resources(req: Request):
         min_cpu = req.get_min_cpu()
         min_ram = req.get_min_ram()
         min_disk = req.get_min_disk()
-        print('required(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (
+        info('required(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (
             min_cpu, min_ram, min_disk))
         cpu, ram, disk = _get_resources(quiet=True)
         if cpu >= min_cpu and ram >= min_ram and disk >= min_disk:

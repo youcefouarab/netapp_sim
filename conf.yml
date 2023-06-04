@@ -1,24 +1,25 @@
 PROTOCOL:
   TIMEOUT: 1  # in seconds, time to wait for answer after sending packet
   RETRIES: 3  # number of times to send unanswered packet
+  VERBOSE: True
 
 SIMULATION:
   # activate simulation
   ACTIVE: True  # if True, capacities will be simulated
                 # if False, real monitoring will be activated
   # execution (time interval)
-  EXEC_MIN: 0
-  EXEC_MAX: 1
+  EXEC_MIN: 0.0001
+  EXEC_MAX: 0.0001
 
 # hosts capacities (resources to offer)
 HOSTS:
-  USE_DEFAULT: False # if True, capacities will be gotten from DEFAULT
+  USE_DEFAULT: True # if True, capacities will be gotten from DEFAULT
                     # if False, capacities will be gotten from host's IP
   # default capacities (**required even if not used**)
   DEFAULT:
-    CPU: 1
-    RAM: 1024  # in MB
-    DISK: 10   # in GB
+    CPU: 4
+    RAM: 4096  # in MB
+    DISK: 256   # in GB
   # capacities of host 10.0.0.1
   10.0.0.1:
     CPU: 1
