@@ -325,7 +325,7 @@ class MyProtocolAM(AnsweringMachine):
             if _requests[_req_id].state == HREQ:
                 info('This request arrived late')
                 # if resources are still available
-                if check_resources(_requests[_req_id], quiet=True)[0]:
+                if check_resources(_requests[_req_id], quiet=True):
                     info('but resources are still available')
                     info('Reserving resources')
                     reserve_resources(_requests[_req_id])
