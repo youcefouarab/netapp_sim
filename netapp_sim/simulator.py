@@ -205,7 +205,7 @@ def reserve_resources(req: Request):
         min_disk = req.get_min_disk()
         info('required(cpu=%d, ram=%.2fMB, disk=%.2fGB)' % (
             min_cpu, min_ram, min_disk))
-        cpu, ram, disk, _, _ = get_resources(quiet=True)
+        cpu, ram, disk = get_resources(quiet=True)
         if cpu >= min_cpu and ram >= min_ram and disk >= min_disk:
             _reserved['cpu'] += min_cpu
             _reserved['ram'] += min_ram
