@@ -1,5 +1,5 @@
 '''
-    This module loads conf.yml parameters as environment variables.
+    Loads conf.yml parameters as environment variables.
 '''
 
 
@@ -15,11 +15,11 @@ CONF = ROOT_PATH + '/conf.yml'
 try:
     with open(CONF, 'r') as f:
         config = safe_load(f)
-        for sect in config:
-            for param in config[sect]:
-                if config[sect][param] != None:
-                    environ[sect + '_' + param] = str(config[sect][param])
-except:
-    print(' *** ERROR: Configuration failed. Check if conf.yml exists in '
-          + ROOT_PATH)
+        for sect, params in config.items():
+            for param, value in params.items():
+                if value != None:
+                    environ[sect + '_' + param] = str(value)
+
+except Exception as e:
+    print(' *** ERROR in config:', e.__class__.__name__, e)
     exit()

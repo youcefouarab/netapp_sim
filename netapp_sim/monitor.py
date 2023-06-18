@@ -1,12 +1,3 @@
-'''
-    This module contains the Monitor class, which is responsible for monitoring 
-    the state of available resources of the node it's running on (number of 
-    CPUs, free memory, and free disk, as well as free bandwidth and delay on 
-    each network interface), and saving the most recent measures in a 
-    dictionary.
-'''
-
-
 from threading import Thread
 from time import monotonic, sleep
 from psutil import net_if_addrs, net_if_stats, net_io_counters
@@ -18,38 +9,40 @@ from meta import SingletonMeta
 
 class Monitor(metaclass=SingletonMeta):
     '''
-        This class is responsible for monitoring the state of available 
-        resources of the node it's running on (number of CPUs, free memory, 
-        and free disk, as well as free bandwidth and delay on each network 
-        interface), and saving the most recent measures in a dictionary.
+        Class for monitoring the state of resources of the node it's running on 
+        (number of CPUs, total and free memory size, total and free disk size, 
+        as well as free free egress and ingress bandwidth and delay on each 
+        network interface).
 
         Attributes:
         -----------
-        monitor_period: time to wait before each measure. Default is 1s.
+        monitor_period: Time to wait before each measure. Default is 1s.
 
-        ping_host_ip: destination IP address to which delay is calculated. 
-        Default is 8.8.8.8.
+        ping_host_ip: Destination IP address to which delay is calculated, 
+        default is 8.8.8.8.
 
-        ping_host_port: destination port number to which delay is calculated. 
-        Default is 443.
+        ping_host_port: Destination port number to which delay is calculated, 
+        default is 443.
 
-        ping_timeout: time to wait before declaring delay as infinite. Default 
+        ping_timeout: Time to wait before declaring delay as infinite. Default 
         is 4s.
 
-        measures: dict saving the most recent measures in the following 
+        measures: Dict containing the most recent measures in the following 
         structure: 
 
-        {
-        \t  'cpu_count': <int>,
-        \t  'memory_total: <float>, # in MB
-        \t  'memory_free': <float>, # in MB
-        \t  'disk_total': <float>, # in GB
-        \t  'disk_free': <float>, # in GB
-        \t  'iface_name': {
-        \t\t    'bandwidth_up': <float>, # in Mbit/s
-        \t\t    'bandwidth_down': <float>, # in Mbit/s
-        \t\t    'delay': <float>, # in s
-        \t  },
+        {\n
+        \t  'cpu_count': <int>,\n
+        \t  'memory_total: <float>, # in MB\n
+        \t  'memory_free': <float>, # in MB\n
+        \t  'disk_total': <float>, # in GB\n
+        \t  'disk_free': <float>, # in GB\n
+        \t  'iface_name': {\n
+        \t\t    'bandwidth_up': <float>, # in Mbit/s\n
+        \t\t    'bandwidth_down': <float>, # in Mbit/s\n
+        \t\t    'delay': <float>, # in s\n
+        \t\t    'tx_packets': <int>,\n
+        \t\t    'rx_packets': <int>,\n
+        \t  },\n
         }.
 
         Methods:
@@ -114,11 +107,13 @@ class Monitor(metaclass=SingletonMeta):
             self.measures['disk_total'] = disk.total / 1e+9  # in GB
             self.measures['disk_free'] = disk.free / 1e+9  # in GB
             # link specs
+            '''
             for iface in io:
                 if iface != 'lo':
                     # delay
                     # use thread so it's asynchronous (in case of timeout)
                     Thread(target=self._get_delay, args=(iface,)).start()
+            '''
             # get network I/O stats on each interface again
             sleep(self.monitor_period)
             io_2 = net_io_counters(pernic=True)
@@ -129,9 +124,11 @@ class Monitor(metaclass=SingletonMeta):
                     # bandwidth
                     # speed = (new bytes - old bytes) / period
                     # current speed = max(up speed, down speed)
-                    up_bytes = io_2[iface].bytes_sent - io[iface].bytes_sent
+                    prev = io[iface]
+                    next = io_2[iface]
+                    up_bytes = next.bytes_sent - prev.bytes_sent
                     up_speed = up_bytes * 8 / self.monitor_period  # in bits/s
-                    down_bytes = io_2[iface].bytes_recv - io[iface].bytes_recv
+                    down_bytes = next.bytes_recv - prev.bytes_recv
                     down_speed = down_bytes * 8 / self.monitor_period  # in bits/s
                     #  get max speed (capacity)
                     max_speed = stats[iface].speed * 1000000  # in bits/s
@@ -143,6 +140,8 @@ class Monitor(metaclass=SingletonMeta):
                     self.measures.setdefault(iface, {})
                     self.measures[iface]['bandwidth_up'] = bandwidth_up
                     self.measures[iface]['bandwidth_down'] = bandwidth_down
+                    self.measures[iface]['tx_packets'] = next.packets_sent
+                    self.measures[iface]['rx_packets'] = next.packets_recv
                 # if interface is removed during monitor period
                 # remove from measures dict
                 elif iface not in io_2 or iface not in stats:
@@ -200,8 +199,9 @@ class Monitor(metaclass=SingletonMeta):
 
 # for testing
 if __name__ == '__main__':
+    from pprint import pprint
     monitor = Monitor()
     monitor.start()
     while True:
-        print(monitor.measures)
+        pprint(monitor.measures)
         sleep(monitor.monitor_period)

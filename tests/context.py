@@ -1,6 +1,5 @@
-import sys
-import os
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
+from sys import path
+from os.path import dirname, abspath, join
 
-import netapp_sim.model as model
+
+path.insert(0, abspath(join(dirname(__file__), '..')))

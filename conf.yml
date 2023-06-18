@@ -5,7 +5,7 @@ PROTOCOL:
 
 SIMULATION:
   # activate simulation
-  ACTIVE: True  # if True, capacities will be simulated
+  ACTIVE: False  # if True, capacities will be simulated
                 # if False, real monitoring will be activated
   # execution (time interval)
   EXEC_MIN: 0.0001
@@ -17,9 +17,9 @@ HOSTS:
                     # if False, capacities will be gotten from host's IP
   # default capacities (**required even if not used**)
   DEFAULT:
-    CPU: 4
-    RAM: 4096  # in MB
-    DISK: 256   # in GB
+    CPU: 1
+    RAM: 1024  # in MB
+    DISK: 10   # in GB
   # capacities of host 10.0.0.1
   10.0.0.1:
     CPU: 1

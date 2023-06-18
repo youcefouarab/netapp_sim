@@ -1,6 +1,5 @@
 from threading import Thread
 from time import sleep
-from os import _exit
 
 from context import send_request
 
@@ -39,6 +38,11 @@ If SEQUENTIAL, wait for previous response before sending next request
 '''
 SEQUENTIAL = False
 
+'''
+DATA bytes to send
+'''
+DATA = b'data + program'
+
 
 def _send_request(index: int, cos_id: int, data: bytes):
     print('%d-' % index, send_request(cos_id=cos_id, data=data))
@@ -51,12 +55,11 @@ def _send_requests():
         _limit -= 1
         index += 1
         if SEQUENTIAL:
-            _send_request(index, COS_ID, b'data + program')
+            _send_request(index, COS_ID, DATA)
         else:
             Thread(target=_send_request, args=(
-                index, COS_ID, b'data + program')).start()
+                index, COS_ID, DATA)).start()
         sleep(INTERVAL)
-    #_exit(1)
 
 
 for thread in range(THREADS):

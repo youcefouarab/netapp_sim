@@ -1,7 +1,8 @@
 '''
-    This module includes classes used to model Classes of Service (CoS) and 
-    their requirements, network application hosting requests, their attempts, 
-    and their responses.
+    Model classes used to represent various networking concepts, such as nodes, 
+    their types and their specs, interfaces and their specs, links and their 
+    specs, Classes of Service (CoS) and their requirements, application hosting 
+    requests, their attempts, and their responses.
 
     Classes:
     --------
@@ -35,38 +36,43 @@ class Model:
         --------
         as_dict(flat): Converts object to dictionary and returns it. If flat 
         is False, nested objects will become nested dictionaries; otherwise, 
-        all attributes in nested objects will be in parent dictionary.
+        all attributes in nested objects will be in root dictionary.
 
-        insert(): Insert as row in database table. 
+        insert(): Insert as a row in the corresponding database table.
 
-        update(): Update database table row.
+        update(): Update the corresponding database table row.
 
-        select(): Select row(s) from database table.
+        select(fields, groups, as_obj, **kwargs): Select row(s) from the 
+        corresponding database table.
 
-        as_csv(): Convert database table to CSV file.
+        as_csv(fields, abs_path, **kwargs): Convert the corresponding database 
+        table to a CSV file.
+
+        columns(): Returns the list of columns in the corresponding database 
+        table.
     '''
 
     def as_dict(self, flat: bool = False, _prefix: str = ''):
         '''
             Converts object to a dictionary and returns it. If flat is False, 
             nested objects will become nested dictionaries; otherwise, all 
-            attributes in nested objects will be in parent dictionary.
+            attributes in nested objects will be in root dictionary.
 
             To avoid name conflicts when flat is True, nested attribute name 
             will be prefixed: <parent_attribute_name>_<nested_attribute_name> 
-            (example: Request.cos.id will become cos_id).
+            (example: cos.id will become cos_id).
         '''
 
         if flat and _prefix:
             _prefix += '_'
-        return {_prefix + str(key): copy(val) 
+        return {_prefix + str(key): copy(val)
                 for key, val in self.__dict__.items()}
 
     # the following methods are for database operations
 
     def insert(self):
         '''
-            Insert as row in database table.
+            Insert as a row in the corresponding database table.
 
             Returns True if inserted, False if not.
         '''
@@ -76,7 +82,7 @@ class Model:
 
     def update(self, _id: tuple = ('id',)):
         '''
-            Update database table row.
+            Update the corresponding database table row.
 
             Return True if updated, False if not.
         '''
@@ -85,10 +91,10 @@ class Model:
         return update(self, _id)
 
     @classmethod
-    def select(cls, fields: tuple = ('*',), groups: tuple = None, 
+    def select(cls, fields: tuple = ('*',), groups: tuple = None,
                as_obj: bool = True, **kwargs):
         '''
-            Select row(s) from database table.
+            Select row(s) from the corresponding database table.
 
             Filters can be applied through args and kwargs. Example:
 
@@ -103,20 +109,20 @@ class Model:
         return select(cls, fields, groups, as_obj, **kwargs)
 
     @classmethod
-    def select_page(cls, page: int, page_size: int, fields: tuple = ('*',), 
+    def select_page(cls, page: int, page_size: int, fields: tuple = ('*',),
                     orders: tuple = None, as_obj: bool = True, **kwargs):
         '''
             ...
         '''
-        
+
         from dblib import select_page
-        return select_page(cls, page, page_size, fields, orders, as_obj, 
+        return select_page(cls, page, page_size, fields, orders, as_obj,
                            **kwargs)
 
     @classmethod
     def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', **kwargs):
         '''
-            Convert database table to CSV file.
+            Convert the corresponding database table to a CSV file.
 
             Filters can be applied through args and kwargs. Example:
 
@@ -131,7 +137,7 @@ class Model:
     @classmethod
     def columns(cls):
         '''
-            Returns list of columns of database table.
+            Returns the list of columns in the corresponding database table.
         '''
 
         from dblib import _get_columns
@@ -145,25 +151,25 @@ class CoSSpecs(Model):
 
         Attributes:
         -----------
-        max_response_time: default is inf
+        max_response_time: Default is inf.
 
-        min_concurrent_users: default is 0
+        min_concurrent_users: Default is 0.
 
-        min_requests_per_second: default is 0
+        min_requests_per_second: Default is 0.
 
-        min_bandwidth: default is 0
-        
-        max_delay: default is inf
+        min_bandwidth: Default is 0.
 
-        max_jitter: default is inf
+        max_delay: Default is inf.
 
-        max_loss_rate: default is 1
+        max_jitter: Default is inf.
 
-        min_cpu: default is 0
+        max_loss_rate: Default is 1.
 
-        min_ram: default is 0
-        
-        min_disk: default is 0
+        min_cpu: Default is 0.
+
+        min_ram: Default is 0.
+
+        min_disk: Default is 0.
     '''
 
     def __init__(self,
@@ -208,9 +214,7 @@ class CoS(Model):
     def __init__(self, id: int, name: str, specs: CoSSpecs = None):
         self.id = id
         self.name = name
-        if not specs:
-            specs = CoSSpecs()
-        self.specs = specs
+        self.specs = specs if specs else CoSSpecs()
 
     def as_dict(self, flat: bool = False, _prefix: str = ''):
         d = super().as_dict(flat, _prefix)
@@ -223,9 +227,9 @@ class CoS(Model):
             d.update(self.specs.as_dict(flat, _prefix=_prefix+'specs'))
         return d
 
-    # the following methods serve for access to the CoS specs no
-    # matter how they are implemented (whether they are attributes
-    # in the object, are objects themselves within an Iterable, etc.)
+    # the following methods serve for access to the CoS specs no matter how
+    # they are implemented (whether they are attributes in the object, are
+    # objects themselves within an Iterable, etc.)
 
     def get_max_response_time(self):
         return self.specs.max_response_time
@@ -309,13 +313,13 @@ class Request(Model):
 
         state: Request state, enumeration of HREQ (1) (waiting for host), RREQ 
         (3) (waiting for resources), DREQ (6) (waiting for data), DRES (7) 
-        (finished), FAIL (0) (failed). Default is HREQ (1).
+        (finished), and FAIL (0) (failed).
 
-        hreq_at: Host request timestamp.
+        hreq_at: Host request timestamp (start of operation).
 
-        dres_at: Data exchange response timestamp.
+        dres_at: Data exchange response timestamp (end of operation).
 
-        attempts: Dict of request Attempts.
+        attempts: Dict of request Attempts (keys are attempt numbers).
 
         Methods:
         --------
@@ -351,8 +355,8 @@ class Request(Model):
         return datetime.fromtimestamp(x) if x != None else x
 
     def __repr__(self):
-        return ('\nrequest(id=%s, state=(%s), cos=%s, host=%s, '
-                'hreq_at=%s, dres_at=%s)\n' % (
+        return ('\nrequest(id=%s, state=(%s), cos=%s, host=%s, hreq_at=%s, '
+                'dres_at=%s)\n' % (
                     self.id, self._states[self.state], self.cos.name,
                     self.host, self._t(self.hreq_at), self._t(self.dres_at)))
 
@@ -374,7 +378,9 @@ class Request(Model):
 
     def new_attempt(self):
         '''
-            Create new attempt.
+            Create a new attempt.
+
+            Returns Attempt object.
         '''
 
         self._attempt_no += 1
@@ -382,9 +388,9 @@ class Request(Model):
         self.attempts[self._attempt_no] = attempt
         return attempt
 
-    # the following methods serve for access to the CoS specs no
-    # matter how they are implemented (whether they are attributes
-    # in the object, are objects themselves within an Iterable, etc.)
+    # the following methods serve for access to the CoS specs no matter how
+    # they are implemented (whether they are attributes in the object, are
+    # objects themselves within an Iterable, etc.)
 
     def get_max_response_time(self):
         return self.cos.get_max_response_time()
@@ -431,15 +437,15 @@ class Attempt(Model):
 
         state: Attempt state, enumeration of HREQ (1) (waiting for host), RREQ 
         (3) (waiting for resources), DREQ (6) (waiting for data), DRES (7) 
-        (finished). Default is HREQ (1).
+        (finished).
 
-        hreq_at: Host request timestamp.
+        hreq_at: Host request timestamp (start of operation).
 
-        hres_at: First host response timestamp.
+        hres_at: First host response timestamp (intermediate step).
 
-        rres_at: Resource reservation response timestamp.
+        rres_at: Resource reservation response timestamp (intermediate step).
 
-        dres_at: Data exchange response timestamp.
+        dres_at: Data exchange response timestamp (end of operation).
     '''
 
     def __init__(self, req_id, attempt_no: int, host: str = None,

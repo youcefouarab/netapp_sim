@@ -1,16 +1,16 @@
 '''
-    This module defines the communication protocol between hosts, including 
-    the packets' header and the protocol's responder.
+    Definition of the communication protocol between hosts, including the 
+    packets' header and the protocol's responder, using Scapy.
 
     Classes:
     --------
-    MyProtocol: This class defines the communication protocol between hosts, 
-    including the packet header's fields, as well as ways to detect if a packet 
-    is an answer to another.
+    MyProtocol: Class deriving from Scapy's Packet class to define the 
+    communication protocol between hosts, including the packet header's fields, 
+    as well as ways to detect if a packet is an answer to another.
 
-    MyProtocolAM: This class defines the protocol's responder (Answering 
-    Machine), which takes decisions and builds and sends replies to received 
-    packets based on the protocol's state.
+    MyProtocolAM: Class deriving from Scapy's AnsweringMachine class to define 
+    the protocol's responder, which takes decisions and builds and sends 
+    replies to received packets based on the protocol's state.
 
     Methods:
     --------
@@ -56,19 +56,16 @@ except:
 if getenv('PROTOCOL_VERBOSE', False) == 'True':
     basicConfig(level=INFO, format='%(message)s')
 
-# dict of CoS id -> CoS
 cos_dict = {cos.id: cos for cos in CoS.select()}
-
-# dicts of CoS id -> name
 cos_names = {id: cos.name for id, cos in cos_dict.items()}
 
-# dict of requests sent by consumer
+# dict of requests sent by consumer (keys are request IDs)
 requests = {'_': None}  # '_' is placeholder
 # fill with existing request IDs from DB to avoid conflict when generating IDs
 requests.update(
     {req[0]: None for req in Request.select(fields=('id',), as_obj=False)})
 
-# dict of requests received by provider
+# dict of requests received by provider (keys are (src IP, request ID))
 _requests = {}
 
 # dict of responses received by consumer
@@ -84,9 +81,10 @@ class _Request(Request):
 
 class MyProtocol(Packet):
     '''
-        This class defines the communication protocol between hosts, including 
-        the packet header's fields, as well as ways to detect if a packet is 
-        an answer to another.
+        Class deriving from Scapy's Packet class to define the communication 
+        protocol between hosts and orchestrator/controller, including the 
+        packet header's fields, as well as ways to detect if a packet is an 
+        answer to another.
 
         Fields:
         -------
@@ -101,8 +99,7 @@ class MyProtocol(Packet):
         req_id: String of 10 bytes indicating the request's ID. Default is ''.
 
         attempt_no: Integer of 4 bytes indicating the attempt number. Default 
-        is 1. Conditional field for state == HREQ (1), state == HRES (2), 
-        state == DREQ (6) or state == DRES(7). 
+        is 1. 
 
         cos_id: Integer of 4 bytes indicating the application's CoS ID. Default 
         is 1 (best-effort). Conditional field for state == HREQ (1).
@@ -141,9 +138,7 @@ class MyProtocol(Packet):
     fields_desc = [
         ByteEnumField('state', HREQ, _states),
         StrLenField('req_id', '', lambda _: REQ_ID_LEN),
-        ConditionalField(IntField('attempt_no', 1),
-                         lambda pkt: pkt.state == HREQ or pkt.state == HRES
-                         or pkt.state == DREQ or pkt.state == DRES),
+        IntField('attempt_no', 1),
         ConditionalField(IntEnumField('cos_id', 0, cos_names),
                          lambda pkt: pkt.state == HREQ),
         ConditionalField(StrField('data', ''),

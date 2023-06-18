@@ -1,15 +1,17 @@
 '''
-    This module provides methods for database operations.
+    General purpose library for database operations, providing methods that 
+    serve as a facade to hide the complexities of the database-specific library 
+    used. Currently supports SQLite database library.
     
     Methods:
     --------
-    insert(obj): Insert obj as row in database table. 
+    insert(obj): Insert obj as a row in its corresponding database table. 
 
-    update(obj): Update database table row from obj.
+    update(obj): Update corresponding database table row from obj.
     
-    select(cls, fields, as_obj): Select row(s) from database table of cls.
+    select(cls, fields, as_obj): Select row(s) from the database table of cls.
 
-    as_csv(cls): Convert database table of cls to CSV file.
+    as_csv(cls): Convert the database table of cls to a CSV file.
 '''
 
 
@@ -30,11 +32,11 @@ ROOT_PATH = dirname(dirname(abspath(__file__)))
 
 _db_path = getenv('DATABASE_PATH', None)
 if _db_path == None:
-    print(' *** WARNING: DATABASE:PATH parameter invalid or missing from '
-          'conf.yml. Defaulting to in-memory database.')
+    print(' *** WARNING in dblib: DATABASE:PATH parameter invalid or missing '
+          'from conf.yml. Defaulting to in-memory database.')
     _db_path = ':memory:'
 elif _db_path != ':memory:':
-    # if SIMULATION:ACTIVE is True (like mininet), create different DB files
+    # if SIMULATION:ACTIVE is True (like Mininet), create different DB files
     # for different hosts (add IP address to file name)
     if getenv('SIMULATION_ACTIVE', False) == 'True':
         names = _db_path.split('.')
@@ -45,8 +47,8 @@ DB_PATH = _db_path
 
 _db_defs_path = getenv('DATABASE_DEFS_PATH', None)
 if _db_defs_path == None:
-    print(' *** WARNING: DATABASE:DEFS_PATH parameter invalid or missing from '
-          'conf.yml. Defaulting to empty database.')
+    print(' *** WARNING in dblib: DATABASE:DEFS_PATH parameter invalid or '
+          'missing from conf.yml. Defaulting to empty database.')
     _db_defs_path = ''
 DB_DEFS_PATH = ROOT_PATH + '/' + _db_defs_path
 
@@ -76,7 +78,7 @@ _rows = {}
 
 def insert(obj: Model):
     '''
-        Insert obj as row in database table.
+        Insert obj as a row in its corresponding database table.
 
         Returns True if inserted, False if not.
     '''
@@ -105,13 +107,13 @@ def insert(obj: Model):
         return True
 
     except Exception as e:
-        print(' *** dblib.insert', e.__class__.__name__, ':', e)
+        print(' *** ERROR in dblib.insert', e.__class__.__name__, e)
         return False
 
 
 def update(obj: Model, _id: tuple = ('id',)):
     '''
-        Update database table row from obj.
+        Update corresponding database table row from obj.
 
         Returns True if updated, False if not.
     '''
@@ -139,14 +141,14 @@ def update(obj: Model, _id: tuple = ('id',)):
         return True
 
     except Exception as e:
-        print(' *** dblib.update', e.__class__.__name__, ':', e)
+        print(' *** ERROR in dblib.update', e.__class__.__name__, e)
         return False
 
 
 def select(cls, fields: tuple = ('*',), groups: tuple = None,
            as_obj: bool = True, **kwargs):
     '''
-        Select row(s) from database table of cls.
+        Select row(s) from the database table of cls.
 
         Filters can be applied through args and kwargs. Example:
 
@@ -180,7 +182,7 @@ def select(cls, fields: tuple = ('*',), groups: tuple = None,
         return _rows[event]
 
     except Exception as e:
-        print(' *** dblib.select', e.__class__.__name__, ':', e)
+        print(' *** ERROR in dblib.select', e.__class__.__name__, e)
         return None
 
 
@@ -219,14 +221,14 @@ def select_page(cls, page: int, page_size: int, fields: tuple = ('*',),
         return _rows[event]
 
     except Exception as e:
-        print(' *** dblib.select_page', e.__class__.__name__, ':', e)
+        print(' *** ERROR in dblib.select_page', e.__class__.__name__, e)
         return None
 
 
 def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', _suffix: str = '',
            **kwargs):
     '''
-        Convert database table of cls to CSV file.
+        Convert the database table of cls to a CSV file.
 
         Filters can be applied through args and kwargs. Example:
 
@@ -249,19 +251,18 @@ def as_csv(cls, fields: tuple = ('*',), abs_path: str = '', _suffix: str = '',
             return True
 
         except Exception as e:
-            print(' *** dblib.as_csv', e.__class__.__name__, ':', e)
+            print(' *** ERROR in dblib.as_csv', e.__class__.__name__, e)
             return False
     else:
         return False
 
 
-# ============
-#     UTIL
-# ============
+# =============
+#     UTILS
+# =============
 
 
-# singleton database connection (for time optimization)
-# with check_same_thread == False, thread sync must be ensured manually
+# singleton database connection
 class Connection:
     def __new__(self):
         if not hasattr(self, '_connection'):
@@ -285,7 +286,7 @@ def _execute():
                 cursor.connection.commit()
 
         except Exception as e:
-            print(' *** dblib._execute', e.__class__.__name__, ':', e)
+            print(' *** ERROR in dblib._execute', e.__class__.__name__, e)
 
 
 Thread(target=_execute).start()

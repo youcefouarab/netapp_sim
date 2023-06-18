@@ -1,6 +1,6 @@
 '''
-    This is the main module, and it plays the two roles of “service consumer” 
-    and “service provider”. It can be used through CLI.
+    Main module of NetApp Sim. It plays the dual role of “service consumer” 
+    and “service provider”. It can be launched through CLI.
 '''
 
 
@@ -9,6 +9,7 @@ from logging import getLogger
 from flask import cli
 
 from protocol import send_request, cos_names
+from simulator import get_resources
 from gui import app
 from consts import MY_IP
 
@@ -43,6 +44,9 @@ if __name__ == '__main__':
     print('\nChoose a Class of Service and click ENTER to send a request\n'
           'Or wait to receive requests')
     _list_cos()
+    print()
+    get_resources()
+    print()
     while True:
         cos_id = input()
         if cos_id == '':
