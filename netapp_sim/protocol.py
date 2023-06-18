@@ -31,8 +31,8 @@ from scapy.all import (Packet, ByteEnumField, StrLenField, IntEnumField,
                        AnsweringMachine, conf, bind_layers, send, srp1, sr1,
                        sniff, Ether, IP)
 
-from simulator import (check_resources, reserve_resources, free_resources,
-                       execute)
+from simulator import (get_resources, check_resources, reserve_resources, 
+                       free_resources, execute)
 from model import CoS, Request, Attempt, Response
 from consts import *
 import config
@@ -242,7 +242,8 @@ class MyProtocolAM(AnsweringMachine):
                 # old request)
                 _requests[_req_id].cos = cos_dict[my_proto.cos_id]
                 info('Checking resources')
-                check, cpu, ram, disk = check_resources(_requests[_req_id])
+                cpu, ram, disk = get_resources(_requests[_req_id])
+                check = check_resources(_requests[_req_id])
                 if check:
                     info('Send host response to %s' % ip_src)
                     _requests[_req_id].state = HRES
